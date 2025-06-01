@@ -1,0 +1,10 @@
+name: r-env
+channels:
+  - conda-forge
+dependencies:
+  - r-base=4.3  # or latest stable
+  - r-tidyverse
+  - r-readr
+  - r-dplyr
+  - r-devtools
+  - r-cpp11  # Optional, useful for R-Rust or Rcpp

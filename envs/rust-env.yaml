@@ -1,0 +1,9 @@
+name: rust-env
+channels:
+  - conda-forge
+dependencies:
+  - rust=1.77  # Or latest stable
+  - cargo
+  - rust-analyzer  # Optional, for better IDE support
+  - clippy  # Optional, for linting
+  - rustfmt  # Optional, for code formatting
