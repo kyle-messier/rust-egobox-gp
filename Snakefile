@@ -1,12 +1,21 @@
-# Snakefile for Snakemake workflow
-
 rule all:
     input:
-        "inst/output/model_output.json"
+        "inst/data/generated_data.csv",
+        "inst/data/test_data.csv",
+        "inst/data/prediction_locs.csv",
+        "inst/output/model_output.csv",
+        "inst/plots/model_results_visualization.png",
+        "inst/plots/model_results_residuals.png",
+        "inst/plots/model_results_scatter.png",
+        "inst/plots/model_results_validation.csv",
+        "inst/output/test_output.csv"  
+
 
 rule generate_data:
     output:
-        "inst/output/generated_data.csv"
+        train="inst/data/generated_data.csv",
+        test = "inst/data/test_data.csv",
+        prediction_locs="inst/data/prediction_locs.csv"
     conda:
         "envs/r-env.yaml"
     script:
@@ -14,19 +23,57 @@ rule generate_data:
 
 rule build_rust:
     output:
-        "target/release/model_fit"
+        "target/release/rustgp"
     shell:
-        "cargo build --release --manifest-path src/Cargo.toml"
+        "cargo build --release"
 
 rule fit_model:
     input:
-        binary="target/release/model_fit",
-        data="inst/output/generated_data.csv"
+        binary="target/release/rustgp",
+        train="inst/data/generated_data.csv",
+        predict="inst/data/prediction_locs.csv"
     output:
-        "inst/output/model_output.json"
+        "inst/output/model_output.csv"
     conda:
         "envs/rust-env.yaml"
+    log:
+        "logs/fit_model.log"        
     shell:
         """
-        {input.binary} {input.data} > {output}
+        {input.binary} \
+          --input-csv {input.train} \
+          --predict-csv {input.predict} \
+          --output-csv {output}
         """
+rule test_model:
+    input:
+        binary="target/release/rustgp",
+        train="inst/data/generated_data.csv",
+        predict="inst/data/test_data.csv"
+    output:
+        "inst/output/test_output.csv"
+    conda:
+        "envs/rust-env.yaml"
+    log:
+        "logs/fit_test.log"        
+    shell:
+        """
+        {input.binary} \
+          --input-csv {input.train} \
+          --predict-csv {input.predict} \
+          --output-csv {output}
+        """        
+rule visualize_results:
+    input:
+        predictions="inst/output/model_output.csv",
+        test_predictions="inst/output/test_output.csv",
+        test_data="inst/data/test_data.csv",
+    output:
+        chloro_plot="inst/plots/model_results_visualization.png",
+        residuals_plot="inst/plots/model_results_residuals.png",
+        scatter_plot="inst/plots/model_results_scatter.png",
+        val_results ="inst/plots/model_results_validation.csv"
+    conda:
+        "envs/r-env.yaml"
+    script:
+        "R/visualize_results.R"
