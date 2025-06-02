@@ -15,3 +15,6 @@ Assuming you have snakemake installed, you can run the workflow with the followi
 ```bash
 snakemake --cores 1
 ```
+
+All of the files created and used by the workflow should be referenced to the relative paths in this repository. The workflow is designed to be run in the root directory of the repository.
+
