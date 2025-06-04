@@ -21,10 +21,10 @@ struct Args {
     output_pred_csv: PathBuf,
 
     #[arg(long)]
-    output_kernel_csv: PathBuf,  
+    output_kernel_csv: Option<PathBuf>,  
 
     #[arg(long)]
-    output_noise_csv: PathBuf      
+    output_noise_csv: Option<PathBuf>      
 }
 
 #[derive(Debug, Serialize)]
@@ -109,9 +109,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let noise = &gp.noise;
         // Print and Save the kernel parameters and noise to a txt file
         let kernel_string = format!("Fitted kernel: {:?}", kernel);
-        std::fs::write(&args.output_kernel_csv, kernel_string)?;
+        if let Some(ref kernel_path) = args.output_kernel_csv {
+            std::fs::write(kernel_path, kernel_string)?;
+        }
         let noise_string = format!("Fitted noise: {}", noise);
-        std::fs::write(&args.output_noise_csv, noise_string)?;
+        if let Some(ref noise_path) = args.output_noise_csv {
+            std::fs::write(noise_path, noise_string)?;
+        }
 
     // Save predictions
     save_predictions(&args.output_pred_csv, &predictions)?;

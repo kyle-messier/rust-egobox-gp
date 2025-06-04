@@ -63,9 +63,7 @@ rule test_model:
         train=rules.generate_data.output.train,
         predict=rules.generate_data.output.test,
     output:
-        pred="inst/output/test_model_output.csv",
-        kernel="inst/output/test_model_kernel.csv",
-        noise="inst/output/test_model_noise.csv"
+        pred="inst/output/test_model_output.csv"
     conda:
         "envs/rust-env.yaml"
     log:
@@ -75,9 +73,7 @@ rule test_model:
         {input.binary} \
           --input-csv {input.train} \
           --predict-csv {input.predict} \
-          --output-pred-csv {output.pred} \
-          --output-kernel-csv {output.kernel} \
-          --output-noise-csv {output.noise} 
+          --output-pred-csv {output.pred}
         """        
 rule visualize_results:
     input:

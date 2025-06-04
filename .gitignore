@@ -3,5 +3,5 @@ logs/
 inst/
 .snakemake/
 
-.pdf
+Rplots.pdf
 .png
