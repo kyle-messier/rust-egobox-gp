@@ -5,7 +5,7 @@ rule all:
         "inst/data/prediction_locs.csv",
         "inst/output/model_output.csv",
         "inst/plots/model_mean_chloro.png",
-        "inst/plots/model_sd_chloro.png",
+        "inst/plots/model_var_chloro.png",
         "inst/plots/model_results_residuals.png",
         "inst/plots/model_results_scatter.png",
         "inst/plots/model_results_validation.csv",
@@ -14,6 +14,10 @@ rule all:
 
 rule generate_data:
     output:
+        sim_plots="inst/plots/simulated_data_plots.png",
+        train_plots="inst/plots/train_data_plots.png",
+        prediction_plots="inst/plots/prediction_locs_plots.png",
+        # Data files
         train="inst/data/train_data.csv",
         test = "inst/data/test_data.csv",
         prediction_locs="inst/data/prediction_locs.csv"
@@ -71,7 +75,7 @@ rule visualize_results:
         test_data="inst/data/test_data.csv",
     output:
         chloro_mean_plot="inst/plots/model_mean_chloro.png",
-        chloro_sd_plot="inst/plots/model_sd_chloro.png",
+        chloro_sd_plot="inst/plots/model_var_chloro.png",
         residuals_plot="inst/plots/model_results_residuals.png",
         scatter_plot="inst/plots/model_results_scatter.png",
         val_results ="inst/plots/model_results_validation.csv"

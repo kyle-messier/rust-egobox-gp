@@ -1,7 +1,7 @@
 use clap::Parser;
 use std::path::{Path, PathBuf};
 use friedrich::gaussian_process::GaussianProcessBuilder;
-use friedrich::kernel::Matern2;
+use friedrich::kernel::Exponential;
 use friedrich::prior::Prior;
 use friedrich::prior::LinearPrior;
 use csv::{WriterBuilder};
@@ -58,24 +58,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
  
     // Set up the Gaussian Process model using the GaussianProcessBuilder struct from `friedrich`
     let input_dimension = 2; // Assuming 2D inputs
-    let output_noise = 0.1; // Example noise level
-    let matern_kernel = Matern2::default();
+    let output_noise = 0.0001; 
+    // Create the Gaussian Process model with the specified kernel and prior
+    let exp_kernel = Exponential::default();
     let linear_prior = LinearPrior::default(input_dimension);
-    let mut gp = GaussianProcessBuilder::<Matern2, LinearPrior>::new(inputs, outputs)
+    let gp = GaussianProcessBuilder::<Exponential, LinearPrior>::new(inputs, outputs)
         .set_noise(output_noise)
-        .set_kernel(matern_kernel)
+        .set_kernel(exp_kernel)
         .fit_kernel()
         .set_prior(linear_prior)
         .fit_prior()
         .train();
 
 
-        let fit_prior = true;
-        let fit_kernel = true;
-        let max_iter = 1000;
-        let convergence_fraction = 1e-6;
-        let max_time = std::time::Duration::from_secs(3600);
-        gp.fit_parameters(fit_prior, fit_kernel, max_iter, convergence_fraction, max_time);   
 
     // Read prediction locations
     let mut pred_rdr = csv::ReaderBuilder::new().from_path(&args.predict_csv)?;
@@ -117,63 +112,3 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-
-// fn main() {
-//         let training_inputs = vec![
-//             vec![10.0, 0.0],
-//             vec![15.0, 0.0],
-//             vec![20.0, 1.0],
-//             vec![10.0, 1.0],
-//         ];
-//         let training_outputs = vec![3.0, 1.0, 1.0, 1.0];
-
-
-//                 // Model parameters.
-//         let input_dimension = 2;
-//         let output_noise = 0.001;
-//         let exponential_kernel = Matern2::default();
-//         let linear_prior = LinearPrior::default(input_dimension);
-
-//         // Defining and training a model.
-//         let mut gp = GaussianProcess::builder(training_inputs, training_outputs)
-//             .set_noise(output_noise)
-//             .set_kernel(exponential_kernel)
-//             .fit_kernel()
-//             .set_prior(linear_prior)
-//             .fit_prior()
-//             .train();
-//         // Optional: fit hyperparameters.
-//         let fit_prior = true;
-//         let fit_kernel = true;
-//         let max_iter = 100;
-//         let convergence_fraction = 1e-5;
-//         let max_time = std::time::Duration::from_secs(3600);
-//         gp.fit_parameters(fit_prior, fit_kernel, max_iter, convergence_fraction, max_time);
-//         // Read prediction locations.
-//         let prediction_inputs = vec![
-//             vec![10.5, 0.5],
-//             vec![10.0, 0.0],
-//         ];
-//         let mut predictions = Vec::new();
-//         for input in prediction_inputs {
-//             let mean = gp.predict(&input);
-//             let var = gp.predict_variance(&input);
-//             predictions.push((input, mean, var));
-//         }
-//         // Print predictions.
-//         for (input, mean, var) in predictions {
-//             println!("Input: {:?}, Predicted Mean: {}, Predicted Variance: {}", input, mean, var);
-//         }
-
-//         // Borrow the kernel from the GP model
-//         let kernel = &gp.kernel; 
-
-//         // Print kernel details
-//         println!("Fitted kernel: {:?}", kernel);
-
-//         // Borrow the noise parameter
-//         let noise = &gp.noise;
-//         // Print noise details
-//         println!("Fitted noise: {}", noise);
-
-// }

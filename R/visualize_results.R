@@ -13,7 +13,7 @@ ggplot(mdl_results, aes(x = x, y = y), size = 3) +
 ggsave(snakemake@output[[1]], width = 8, height = 6)
 
 ggplot(mdl_results, aes(x = x, y = y), size = 3) +
-  geom_point(aes(color = sqrt(predicted_variance))) +
+  geom_point(aes(color = predicted_variance)) +
   scale_color_viridis_c(direction = -1, option = "magma")
 
 # Save output to the path specified by Snakemake
