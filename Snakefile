@@ -4,12 +4,14 @@ rule all:
         "inst/data/test_data.csv",
         "inst/data/prediction_locs.csv",
         "inst/output/model_output.csv",
+        "inst/output/model_kernel.csv",
+        "inst/output/model_noise.csv",
         "inst/plots/model_mean_chloro.png",
         "inst/plots/model_var_chloro.png",
         "inst/plots/model_results_residuals.png",
         "inst/plots/model_results_scatter.png",
-        "inst/plots/model_results_validation.csv",
-        "inst/output/test_output.csv"  
+        "inst/output/model_results_validation.csv",
+        "inst/output/test_model_output.csv"  
 
 
 rule generate_data:
@@ -38,7 +40,10 @@ rule fit_model:
         train=rules.generate_data.output.train,
         predict=rules.generate_data.output.prediction_locs
     output:
-        "inst/output/model_output.csv"
+        pred="inst/output/model_output.csv",
+        kernel="inst/output/model_kernel.csv",
+        noise="inst/output/model_noise.csv"
+
     conda:
         "envs/rust-env.yaml"
     log:
@@ -48,7 +53,9 @@ rule fit_model:
         {input.binary} \
           --input-csv {input.train} \
           --predict-csv {input.predict} \
-          --output-csv {output}
+          --output-pred-csv {output.pred} \
+          --output-kernel-csv {output.kernel} \
+          --output-noise-csv {output.noise} 
         """
 rule test_model:
     input:
@@ -56,7 +63,9 @@ rule test_model:
         train=rules.generate_data.output.train,
         predict=rules.generate_data.output.test,
     output:
-        "inst/output/test_output.csv"
+        pred="inst/output/test_model_output.csv",
+        kernel="inst/output/test_model_kernel.csv",
+        noise="inst/output/test_model_noise.csv"
     conda:
         "envs/rust-env.yaml"
     log:
@@ -66,19 +75,21 @@ rule test_model:
         {input.binary} \
           --input-csv {input.train} \
           --predict-csv {input.predict} \
-          --output-csv {output}
+          --output-pred-csv {output.pred} \
+          --output-kernel-csv {output.kernel} \
+          --output-noise-csv {output.noise} 
         """        
 rule visualize_results:
     input:
         predictions="inst/output/model_output.csv",
-        test_predictions="inst/output/test_output.csv",
+        test_predictions="inst/output/test_model_output.csv",
         test_data="inst/data/test_data.csv",
     output:
         chloro_mean_plot="inst/plots/model_mean_chloro.png",
         chloro_sd_plot="inst/plots/model_var_chloro.png",
         residuals_plot="inst/plots/model_results_residuals.png",
         scatter_plot="inst/plots/model_results_scatter.png",
-        val_results ="inst/plots/model_results_validation.csv"
+        val_results ="inst/output/model_results_validation.csv"
     conda:
         "envs/r-env.yaml"
     script:

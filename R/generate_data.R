@@ -16,11 +16,9 @@ locs <- cbind(
 n <- nrow(locs)
 d <- fields::rdist(locs)
 sill <- 3 * pi
-alpha <- 1
-nugget <- 1e-6
-cov_matrix <- sill *
-  fields::Exponential(d, aRange = alpha) +
-  nugget * diag(n)
+range <- 1
+nugget <- 1
+cov_matrix <- sill * exp(-d / range) + (nugget * diag(n))
 
 # simulate multivariate normal spatial random field
 vals <- mvrnorm(1, mu = rep(pi, n), Sigma = cov_matrix)

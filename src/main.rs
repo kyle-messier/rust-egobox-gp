@@ -18,7 +18,13 @@ struct Args {
     predict_csv: PathBuf,
 
     #[arg(long)]
-    output_csv: PathBuf,
+    output_pred_csv: PathBuf,
+
+    #[arg(long)]
+    output_kernel_csv: PathBuf,  
+
+    #[arg(long)]
+    output_noise_csv: PathBuf      
 }
 
 #[derive(Debug, Serialize)]
@@ -29,14 +35,15 @@ pub struct Prediction {
     pub predicted_variance: f64,
 }
 
-pub fn save_predictions(output_csv: &Path, predictions: &[Prediction]) -> Result<(), Box<dyn Error>> {
-    let mut wtr = WriterBuilder::new().from_path(output_csv)?;
+pub fn save_predictions(output_pred_csv: &Path, predictions: &[Prediction]) -> Result<(), Box<dyn Error>> {
+    let mut wtr = WriterBuilder::new().from_path(output_pred_csv)?;
     for pred in predictions {
         wtr.serialize(pred)?;
     }
     wtr.flush()?;
     Ok(())
 }
+
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
@@ -58,7 +65,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
  
     // Set up the Gaussian Process model using the GaussianProcessBuilder struct from `friedrich`
     let input_dimension = 2; // Assuming 2D inputs
-    let output_noise = 0.0001; 
+    let output_noise = 0.1; 
     // Create the Gaussian Process model with the specified kernel and prior
     let exp_kernel = Exponential::default();
     let linear_prior = LinearPrior::default(input_dimension);
@@ -74,7 +81,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Read prediction locations
     let mut pred_rdr = csv::ReaderBuilder::new().from_path(&args.predict_csv)?;
-    let mut prediction_inputs = Vec::new();
+    let mut prediction_inputs: Vec<Vec<f64>> = Vec::new();
     for result in pred_rdr.records() {
         let record = result?;
         let x: f64 = record[0].parse()?;
@@ -98,17 +105,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Borrow the kernel from the GP model
         let kernel = &gp.kernel; 
-
-        // Print kernel details
-        println!("Fitted kernel: {:?}", kernel);
-
         // Borrow the noise parameter
         let noise = &gp.noise;
-        // Print noise details
-        println!("Fitted noise: {}", noise);
+        // Print and Save the kernel parameters and noise to a txt file
+        let kernel_string = format!("Fitted kernel: {:?}", kernel);
+        std::fs::write(&args.output_kernel_csv, kernel_string)?;
+        let noise_string = format!("Fitted noise: {}", noise);
+        std::fs::write(&args.output_noise_csv, noise_string)?;
 
     // Save predictions
-    save_predictions(&args.output_csv, &predictions)?;
+    save_predictions(&args.output_pred_csv, &predictions)?;
 
     Ok(())
 }
