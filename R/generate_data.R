@@ -1,42 +1,44 @@
 # Generate a simple spatial simulation dataset
-
+library(tidyverse)
 library(fields)
 library(readr)
 library(MASS)
 # set seed for reproducibility
-set.seed(1234)
+set.seed(123)
 
 
 locs <- cbind(
-  runif(30, -1, 1), # x-coordinates
-  runif(30, -1, 1) # y-coordinates
+  runif(1000, -1, 1), # x-coordinates
+  runif(1000, -1, 1) # y-coordinates
 )
 
 # Generate a covariance matrix for the spatial data
-locs_expand <- expand.grid(locs[, 1], locs[, 2])
-n <- nrow(locs_expand)
-d <- fields::rdist(locs_expand)
-sill <- 2.5
-range <- 0.5
-nugget <- 0.1
+n <- nrow(locs)
+d <- fields::rdist(locs)
+sill <- 3 * pi
+alpha <- 1
+nugget <- 0.33 * pi
 cov_matrix <- sill *
-  fields::Matern(d, range = range, smoothness = 2.5) *
-  (nugget * diag(n))
+  fields::Matern(d, alpha = alpha, smoothness = 2.5) +
+  nugget * diag(n)
 
 # simulate multivariate normal spatial random field
-vals <- mvrnorm(1, mu = rep(0, n), Sigma = cov_matrix)
+vals <- mvrnorm(1, mu = rep(pi, n), Sigma = cov_matrix)
 
 df <- data.frame(
-  x = locs_expand[, 1],
-  y = locs_expand[, 2],
+  x = locs[, 1],
+  y = locs[, 2],
   value = vals
 )
 
-df_train <- df[1:600, ]
-df_test <- df[601:nrow(df), ]
+idx_train <- sample(seq_len(nrow(df)), 600, replace = FALSE)
+# Split the dataset into training and test sets
+
+df_train <- df[idx_train, ]
+df_test <- df[-idx_train, ]
 # Save the training and test datasets to CSV files
 train_path <- snakemake@output[[1]]
-write_csv(df, train_path)
+write_csv(df_train, train_path)
 test_path <- snakemake@output[[2]]
 write_csv(df_test, test_path)
 

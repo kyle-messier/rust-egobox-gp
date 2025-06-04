@@ -1,10 +1,11 @@
 rule all:
     input:
-        "inst/data/generated_data.csv",
+        "inst/data/train_data.csv",
         "inst/data/test_data.csv",
         "inst/data/prediction_locs.csv",
         "inst/output/model_output.csv",
-        "inst/plots/model_results_visualization.png",
+        "inst/plots/model_mean_chloro.png",
+        "inst/plots/model_sd_chloro.png",
         "inst/plots/model_results_residuals.png",
         "inst/plots/model_results_scatter.png",
         "inst/plots/model_results_validation.csv",
@@ -13,7 +14,7 @@ rule all:
 
 rule generate_data:
     output:
-        train="inst/data/generated_data.csv",
+        train="inst/data/train_data.csv",
         test = "inst/data/test_data.csv",
         prediction_locs="inst/data/prediction_locs.csv"
     conda:
@@ -30,8 +31,8 @@ rule build_rust:
 rule fit_model:
     input:
         binary="target/release/rustgp",
-        train="inst/data/generated_data.csv",
-        predict="inst/data/prediction_locs.csv"
+        train=rules.generate_data.output.train,
+        predict=rules.generate_data.output.prediction_locs
     output:
         "inst/output/model_output.csv"
     conda:
@@ -48,8 +49,8 @@ rule fit_model:
 rule test_model:
     input:
         binary="target/release/rustgp",
-        train="inst/data/generated_data.csv",
-        predict="inst/data/test_data.csv"
+        train=rules.generate_data.output.train,
+        predict=rules.generate_data.output.test,
     output:
         "inst/output/test_output.csv"
     conda:
@@ -69,7 +70,8 @@ rule visualize_results:
         test_predictions="inst/output/test_output.csv",
         test_data="inst/data/test_data.csv",
     output:
-        chloro_plot="inst/plots/model_results_visualization.png",
+        chloro_mean_plot="inst/plots/model_mean_chloro.png",
+        chloro_sd_plot="inst/plots/model_sd_chloro.png",
         residuals_plot="inst/plots/model_results_residuals.png",
         scatter_plot="inst/plots/model_results_scatter.png",
         val_results ="inst/plots/model_results_validation.csv"

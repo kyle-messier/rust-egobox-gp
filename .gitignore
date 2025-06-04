@@ -2,3 +2,6 @@
 logs/
 inst/
 .snakemake/
+
+.pdf
+.png

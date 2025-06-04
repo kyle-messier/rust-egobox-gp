@@ -12,6 +12,12 @@ ggplot(mdl_results, aes(x = x, y = y), size = 3) +
 # Save output to the path specified by Snakemake
 ggsave(snakemake@output[[1]], width = 8, height = 6)
 
+ggplot(mdl_results, aes(x = x, y = y), size = 3) +
+  geom_point(aes(color = sqrt(predicted_variance))) +
+  scale_color_viridis_c(direction = -1, option = "magma")
+
+# Save output to the path specified by Snakemake
+ggsave(snakemake@output[[2]], width = 8, height = 6)
 
 # Test set predictions, visualization of results, and validation statistics
 
@@ -33,18 +39,18 @@ ggplot(df, aes(x = x, y = y)) +
     midpoint = 0
   ) +
   labs(title = "Residuals of Predictions")
-ggsave(snakemake@output[[2]], width = 8, height = 6)
+ggsave(snakemake@output[[3]], width = 8, height = 6)
 
 #Classic obs-pred scatter plot
-ggplot(df, aes(x = predicted_mean, y = value)) +
+ggplot(df, aes(x = value, y = predicted_mean)) +
   geom_point() +
   geom_abline(slope = 1, intercept = 0, color = "red") +
   labs(
-    x = "Predicted Mean",
-    y = "Observed Value",
+    x = "Observed Value",
+    y = "Predicted Value",
     title = "Observed vs Predicted"
   )
-ggsave(snakemake@output[[3]], width = 8, height = 6)
+ggsave(snakemake@output[[4]], width = 8, height = 6)
 # Calculate validation statistics
 mse <- mean(df$squared_error, na.rm = TRUE)
 mae <- mean(abs(df$residuals), na.rm = TRUE)
@@ -55,4 +61,4 @@ validation_stats <- tibble(
   mae = mae,
   r2 = r2
 )
-write_csv(validation_stats, snakemake@output[[4]])
+write_csv(validation_stats, snakemake@output[[5]])
