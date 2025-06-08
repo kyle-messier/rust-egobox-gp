@@ -1,30 +1,25 @@
 use clap::Parser;
 use std::path::{Path, PathBuf};
-use friedrich::gaussian_process::GaussianProcessBuilder;
-use friedrich::kernel::Exponential;
-use friedrich::prior::Prior;
-use friedrich::prior::LinearPrior;
-use csv::{WriterBuilder};
-use serde::Serialize;
 use std::error::Error;
 
+use egobox_gp::{
+    correlation_models::*,
+    mean_models::*,
+    GaussianProcess,
+};
+use linfa::prelude::*;
+use csv::WriterBuilder;
+use serde::Serialize;
+use ndarray::{Array1, Array2};
+use ndarray::array;
 #[derive(Parser, Debug)]
-#[command(name = "rustgp")]
+#[command(name = "rust-egobox-gp")]
 struct Args {
-    #[arg(long)]
-    input_csv: PathBuf,
-
-    #[arg(long)]
-    predict_csv: PathBuf,
-
-    #[arg(long)]
-    output_pred_csv: PathBuf,
-
-    #[arg(long)]
-    output_kernel_csv: Option<PathBuf>,  
-
-    #[arg(long)]
-    output_noise_csv: Option<PathBuf>      
+    #[arg(long)] input_csv:   PathBuf,
+    #[arg(long)] predict_csv: PathBuf,
+    #[arg(long)] output_pred_csv: PathBuf,
+    #[arg(long)] output_kernel_csv: Option<PathBuf>,
+    #[arg(long)] output_noise_csv:  Option<PathBuf>,
 }
 
 #[derive(Debug, Serialize)]
@@ -35,90 +30,83 @@ pub struct Prediction {
     pub predicted_variance: f64,
 }
 
-pub fn save_predictions(output_pred_csv: &Path, predictions: &[Prediction]) -> Result<(), Box<dyn Error>> {
-    let mut wtr = WriterBuilder::new().from_path(output_pred_csv)?;
-    for pred in predictions {
-        wtr.serialize(pred)?;
+fn save_predictions(path: &Path, preds: &[Prediction]) -> Result<(), Box<dyn Error>> {
+    let mut wtr = WriterBuilder::new().from_path(path)?;
+    for p in preds {
+        wtr.serialize(p)?;
     }
     wtr.flush()?;
     Ok(())
 }
 
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
 
-    
-    // Read training data using CSV and perform Gaussian Process regression
+    // ──────────── 1. TRAINING DATA ────────────
     let mut rdr = csv::ReaderBuilder::new().from_path(&args.input_csv)?;
-    let mut inputs = Vec::new();
-    let mut outputs = Vec::new();
-    for result in rdr.records() {
-        let record = result?;
-        let x: f64 = record[0].parse()?;
-        let y: f64 = record[1].parse()?;
-        let val: f64 = record[2].parse()?;
-        inputs.push(vec![x, y]);
-        outputs.push(val);
+    let mut xy_flat: Vec<f64> = Vec::new();   // (x,y) flattened
+    let mut y_vec:   Vec<f64> = Vec::new();   // targets
+
+    for rec in rdr.records() {
+        let rec = rec?;
+        xy_flat.extend_from_slice(&[rec[0].parse()?, rec[1].parse()?]);
+        y_vec.push(rec[2].parse()?);
     }
 
- 
-    // Set up the Gaussian Process model using the GaussianProcessBuilder struct from `friedrich`
-    let input_dimension = 2; // Assuming 2D inputs
-    let output_noise = 0.1; 
-    // Create the Gaussian Process model with the specified kernel and prior
-    let exp_kernel = Exponential::default();
-    let linear_prior = LinearPrior::default(input_dimension);
-    let gp = GaussianProcessBuilder::<Exponential, LinearPrior>::new(inputs, outputs)
-        .set_noise(output_noise)
-        .set_kernel(exp_kernel)
-        .fit_kernel()
-        .set_prior(linear_prior)
-        .fit_prior()
-        .train();
+    let n_samples = y_vec.len();
+    let inputs  = Array2::from_shape_vec((n_samples, 2), xy_flat)?; // (N,2)
+    let targets = Array1::from_vec(y_vec);                          // (N,)
 
+    let dataset = Dataset::new(inputs, targets);
 
+    // ──────────── 2. FIT GP ────────────
+    let gp = GaussianProcess::<f64, LinearMean, AbsoluteExponentialCorr>::params(
+                 LinearMean::default(),
+                 AbsoluteExponentialCorr::default()
+             )
+            .theta_init(array![1.0])
+            .nugget(0.1)
+            .n_start(10)
+             .fit(&dataset)
+             .expect("GP fit");
 
-    // Read prediction locations
-    let mut pred_rdr = csv::ReaderBuilder::new().from_path(&args.predict_csv)?;
-    let mut prediction_inputs: Vec<Vec<f64>> = Vec::new();
-    for result in pred_rdr.records() {
-        let record = result?;
-        let x: f64 = record[0].parse()?;
-        let y: f64 = record[1].parse()?;
-        prediction_inputs.push(vec![x, y]);
+    // ──────────── 3. PREDICTION LOCATIONS ────────────
+    let mut pr_rdr = csv::ReaderBuilder::new().from_path(&args.predict_csv)?;
+    let mut preds = Vec::new();
+
+    for rec in pr_rdr.records() {
+        let rec = rec?;
+        let x = rec[0].parse::<f64>()?;
+        let y = rec[1].parse::<f64>()?;
+
+        // single row (1,2) array
+        let x_arr = Array2::from_shape_vec((1, 2), vec![x, y])?;
+
+        // predict returns length-1 Array1; var returns (1,1) Array2
+        let m   = gp.predict(&x_arr)?[0];
+        let var = gp.predict_var(&x_arr)?[[0, 0]];
+
+        preds.push(Prediction { x, y, predicted_mean: m, predicted_variance: var });
     }
 
+    // ──────────── 4. SAVE OUTPUTS ────────────
+    save_predictions(&args.output_pred_csv, &preds)?;
 
-    // Perform predictions from 
-    // the Gaussian Process model
-    let mut predictions = Vec::new();
-    for input in prediction_inputs {
-        let (mean, var) = gp.predict_mean_variance(&input);
-        predictions.push(Prediction {
-            x: input[0],
-            y: input[1],
-            predicted_mean: mean,
-            predicted_variance: var,
-        });
+    // ----- hyper-parameters -------------------------------------------------
+    let theta = gp.theta().to_vec();
+    let noise = gp.variance();
+
+    // write kernel params (everything but the last slot)
+    if let Some(k_path) = &args.output_kernel_csv {
+        // drop the last element (=noise)
+        std::fs::write(k_path, format!("{:?}", theta))?;
     }
 
-        // Borrow the kernel from the GP model
-        let kernel = &gp.kernel; 
-        // Borrow the noise parameter
-        let noise = &gp.noise;
-        // Print and Save the kernel parameters and noise to a txt file
-        let kernel_string = format!("Fitted kernel: {:?}", kernel);
-        if let Some(ref kernel_path) = args.output_kernel_csv {
-            std::fs::write(kernel_path, kernel_string)?;
-        }
-        let noise_string = format!("Fitted noise: {}", noise);
-        if let Some(ref noise_path) = args.output_noise_csv {
-            std::fs::write(noise_path, noise_string)?;
-        }
+    // write noise into its own file
+    if let Some(n_path) = &args.output_noise_csv {
+        std::fs::write(n_path, format!("{:.8}", noise))?;
+    }
 
-    // Save predictions
-    save_predictions(&args.output_pred_csv, &predictions)?;
 
     Ok(())
 }

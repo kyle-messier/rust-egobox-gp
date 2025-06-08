@@ -1,5 +1,5 @@
 [package]
-name = "rustgp"
+name = "rust-egobox-gp"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,6 +7,8 @@ edition = "2021"
 clap = { version = "4.2", features = ["derive"] }
 csv = "1.1"
 serde = { version = "1.0", features = ["derive"] }
-friedrich = "0.5.0"
+egobox-gp = "0.29.0"
 ndarray = "0.15"
 rand = "0.8"
+linfa = "0.7.1"
+

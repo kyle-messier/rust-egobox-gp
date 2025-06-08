@@ -30,13 +30,13 @@ rule generate_data:
 
 rule build_rust:
     output:
-        "target/release/rustgp"
+        "target/release/rust-egobox-gp"
     shell:
         "cargo build --release"
 
 rule fit_model:
     input:
-        binary="target/release/rustgp",
+        binary="target/release/rust-egobox-gp",
         train=rules.generate_data.output.train,
         predict=rules.generate_data.output.prediction_locs
     output:
@@ -59,7 +59,7 @@ rule fit_model:
         """
 rule test_model:
     input:
-        binary="target/release/rustgp",
+        binary="target/release/rust-egobox-gp",
         train=rules.generate_data.output.train,
         predict=rules.generate_data.output.test,
     output:
