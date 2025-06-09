@@ -1,4 +1,4 @@
-# Attempting to fit a basic spatial model using the Rust package `friedrich` 
+# Attempting to fit a basic spatial model using the Rust package `egobox-gp` 
 
 I've created a snakemake (snakefile) to run the model fitting process.
 
