@@ -77,9 +77,10 @@ fn main() -> Result<(), Box<dyn Error>> {
                 LinearMean::default(),
                 AbsoluteExponentialCorr::default()
             )
+            .kpls_dim(Some(1))
             .theta_tuning(theta_tuning)   
             .nugget(1.0)
-            .n_start(50)
+            .n_start(100)
             .max_eval(10_000)
             .fit(&dataset)
             .expect("GP fit");
